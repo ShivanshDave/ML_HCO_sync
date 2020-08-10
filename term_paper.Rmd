@@ -1,0 +1,636 @@
+---
+title: "Measuring Synchronization in Simple Neural Oscillators"
+author: |
+  | Shivansh Dave 
+  | Biology Dept., Case Western Reserve University
+  | sdd53@case.edu
+date: |
+  | August 10, 2020
+  | 
+  | *To be submitted as a term paper for BIOL 419 (Spring, 2020)*
+
+output: 
+  bookdown::pdf_document2:
+    toc: true
+    toc_depth: 2
+    keep_tex: true
+    number_sections: true
+
+header-includes:
+  \usepackage{float}
+  \usepackage{subcaption}
+  \usepackage[version=4]{mhchem}
+  \usepackage{listings}
+  \usepackage{color}
+
+bibliography: StcohModel_419.bib
+---
+
+<!-- My Latex Settings  -->
+\newpage
+\floatplacement{figure}{!htb}
+
+
+<!-- Text  -->
+# Summary {-}
+
+In this study, I have constructed simple neural oscillators using a pair of altered Morris-Lecar model neurons by varying different parameters such as system noise levels, synaptic connection type and neuron type (i.e., bursting/regular) to quantify and compare degree of synchrony between the two firing coupled neurons. For measuring synchronization I use two different methods (i.e., cross-correlation of raw voltage traces, and correlation using gaussian smoothed spike trains) to contrast their effectiveness for quantifying synchrony across different type of networks.
+
+
+# Introduction
+
+Synchronization of neural firing is known to play a role in various neural phenomena.  It plays an important role in memory formation. For example, tighter coupling in firing of neurons in medial temporal lobe in the brain is correlated with increased memory performance in humans and animals. In the same study it was found that neural synchronization is linked to a potential cellular mechanism for memory storage and timing-based learning tasks [@jutras10synchronous]. In addition to this, synchronization is also associated with epilepsy, which affects about 3 million adults and 0.5 million children in the US and 50 million people worldwide [@cdc18epilepsy; @who20epilepsy]. @mormann03epileptic found that decrease in neural synchronization precedes epileptic seizures and neural desynchronization is an immanent part of seizure initiating mechanism in humans. [@mormann03epileptic]
+
+Neural synchronization being an interesting topic to study, it is important to be able to understand how one can achieve synchronized firing using a simple system and to be able to quantify the synchrony in a simple neural oscillator. For an oscillator, the synchronization can be of broadly two types, namely, in-phase synchronization and anti-phase synchronization [@pikovsky07synchronization], and different kinds of oscillator may give rise to different synchronization properties [@gonzalez-miranda14pacemaker]. For example, in certain conditions inhibitory synapse in an oscillator gives rise to synchronous firing as opposed to excitation [@vanvreeswijk94when]. In an oscillator, noise level may cause desynchronization and cause the weaker coupling between two neurons. Computational tools can allow us to construct a simple oscillator and let us study the effect of various factors such as system noise levels etc, on the degree of synchronization achieved by the oscillator.
+
+To make neurons for oscillators, I use Morris-Lecar (ML) model, which is a reduced two-dimensional non-linear model for simulating neurons in contrast to the 4-dimensional Hodgkin–Huxley model [@lecar07morrislecar]. I use $Ca^{2+}$ and $K^+$ ion channels to simulate internal neuronal dynamics, as explained originally in [@morris81voltage]. Now, if I connect two of such neurons to each other, would they give rise to sustained synchronous firing? and how does the degree of synchrony vary when I couple those neurons differently? This study is mainly focused on this question.
+
+For simulating a simple oscillator, I use a half-center oscillator (HCO) made through synaptically connecting two ML neurons reciprocally with each other. Since different types of oscillators give rise to different oscillation patterns, I use many different HCOs (See section \@ref(hco)), made by varying the type of synapses and neurons. To get a bursting type HCO, I altered the ML neurons to remove their dependence on external stimulation current for initiating spikes. These bursting ML neurons have slow internal feedback current, responsible for their bursting properties [@mainen96influence]. 
+
+How synchronized is an oscillator for a given noise level in the neurons? To be able to study effects of noise (which can represent physical phenomenon such as ambient temperature, etc.), I stochastically simulate operation of both the ion channels and compare the synchronization of stochastically simulated HCO to the deterministic simulations. The smaller the count of ion channels present in a neuron, the larger the noise levels will be for that system. Thus, I vary system size (i.e., $\Omega$) for each ion channel for quantifying their effects on synchronization. 
+
+
+# Methods
+
+I used the Morris–Lecar (ML) model as a base for making my neurons for deterministic simulations (See Section \@ref(MLdt)). I altered the model parameters to get the ion channels (i.e., K+ and Ca2+) to operate stochastically (see \@ref(MLst)) by modeling the Chemical Langevin Equations for a first order single variable chemical reaction (see \@ref(CLE)). The altered ion channel properties and a slow internal feedback current are used for making the ML neurons to operate in the "bursting mode" (see \@ref(Bpar)). 
+
+Chemical synapses of the type excitatory as well as inhibitory are achieved by introducing the synapses on ML neurons (see \@ref(syn)). Two ML neurons of any type (i.e., deterministic/stochastic and plain/bursting) are reciprocally connected to each other using chemical synapses (i.e., excitatory or inhibitory) to get the functioning Half center oscillator (HCO), (see \@ref(hco)). The HCO shows a varied degree of synchronizations based on the type of neurons and the connections. I employ and compare both, the gaussian smoothed spike-time method (see \@ref(blc)) and the Pearson's linear correlation of raw voltage traces, to compare the degree of synchronization between the participating ML neurons in various types of HCOs. 
+
+## ML Neurons {#ML}
+
+I am simulating an array of altered Morris-Lecar neurons (i.e., ML neurons) in parallel to find the next membrane voltage and the ion channel states using the present conditions using a Matlab script I wrote for this purpose (see \@ref(MLm)). Any of these neurons can receive a chemical synapse and project a  chemical synapse onto any other neuron connected in the network. The Matlab simulation script (with a "demo" network) is used for initializing and simulating the network for a given duration (see Appendix \@ref(MLm)).
+
+This section contains the details on the mathematical and computational tools used for basic operational realization of ML neurons. Subsequent sections will cover any further modifications such as introducing synapses (see \@ref(syn)) and enabling slow internal feedback current for bursting mode (see \@ref(Bpar)). 
+
+### Deterministic Neuron {#MLdt}
+
+Firstly, to achieve deterministic simulation of ML neurons I used equations \@ref(eq:dvdt)-\@ref(eq:tau), and used some constant parameters \@ref(eq:par), which I referred from [@anderson15stochastic; @lecar07morrislecar].
+
+\begin{figure}
+  \captionsetup[subfigure]{labelformat=empty} \centering
+  \begin{subfigure}[b]{0.75\textwidth}
+    \includegraphics[width=\textwidth]{figs/F0_A_ML_channel_det.png}
+    \caption{} \label{fig:fig0dt}
+  \end{subfigure}
+  \vspace{-0.75cm}
+  \caption{(A) Deterministic ML Neuron membrane voltage and activation of $K^+$ and $Ca^{2+}$ ion channels, (left) in plain/regular ML neurons; (right) ML neurons with bursting mode.}
+\end{figure}
+
+<!-- Det : (dV/dt) (dn/dt) -->
+\begin{align} 
+(\#eq:dvdt) \frac{dv}{dt} = f(v,n) = 
+    \frac1C ( I_{\rm app} - &g_{\rm Ca} m_\infty (v) (v - v_{\rm Ca}) - 
+    g_{\rm K} n (v - v_{\rm K}) - g_{\rm L}(v - v_{\rm L}) ) \\
+\nonumber \frac{dn}{dt}  =  g(v,n) &= \alpha(v)(1-n) - \beta(v)n \\
+(\#eq:dndt) &= (n_\infty(v)-n)/\tau(v)
+\end{align}
+
+Equation \@ref(eq:dvdt) shows the deterministic membrane voltage for the ML model neurons. In which, $n; (n \in [0,1])$ represents a fraction of $K^+$ ion channels open at the given time $t$. $I_{\rm app}$ is the current value, measured in $\mu A/cm^2$, which can represent either the current-clamp current (i.e, $I_{stim}$) in case of regular or plain ML neurons (left in Figure\@ref(fig:fig0dt)) or it can represent the slow internal feedback current (i.e., $I_{internal}$) for the bursting mode ML neurons (see \@ref(Bpar); right plots in Figure\@ref(fig:fig0dt)). Eq.\@ref(eq:dndt) represents the dynamical opening of $K^+$ ion channels which depends on $\alpha$ and $\beta$, which are the *per capita* transition rates of ion channels to open or close dynamically \@ref(eq:ab). ALternatively, the dynamic operation of $n$ can be computed by the steady-state value of $n$ (i.e., the fraction of $K^+$ ion channels open in steady-state) and temporal dynamics of the recovery process of channel operation, $\tau$, as shown in \@ref(eq:dndt). The values of $\alpha, \beta, n_\infty$ and $\tau$ depend on a present value of membrane voltage, $v$, and can be modeled using the voltage constants (i.e., $v_c, v_d$). For convenience, a membrane voltage dependent variable, $\xi$, is defined \@ref(eq:ab). The voltage constants $v_a$ and $v_b$ are used to model membrane voltage dependent dynamic operation of $Ca^{2+}$ ion channels.
+
+<!-- Det : Xi/A/B/Ninf/Minf/Tau -->
+\begin{align}
+\nonumber \phi=0.04\ s^{-1},\ v_a&=-1.2\ mV,\ v_b=18\ mV,\ v_c=2\ mV,\ v_d=30\ mV,
+\\ (\#eq:ab) \xi = \frac{v-v_c}{v_d},\ 
+    &\alpha(v) = \frac{\phi \cosh(\xi/2)}{1+ e^{2\xi}},\ 
+    \beta(v) = \frac{\phi \cosh(\xi/2)}{1+ e^{-2\xi}},
+\\ (\#eq:nss) n_\infty(v) &= \frac{\alpha(v)}{\alpha(v) + \beta(v)} \ 
+    =\  \frac12(1 + \tanh \xi)
+\\ (\#eq:mss) m_\infty &= \frac12\left(1+ \tanh(\frac{v-v_a}{vb})\right)
+\\ (\#eq:tau) \tau(v) &= \frac{1}{\alpha(v) + \beta(v)} \ 
+    =\  \frac{1}{\phi \cosh(\xi/2)}
+\end{align}
+
+Other fixed constants used for deterministic simulations are listed below \@ref(eq:par). Ion channel maximum conductance $g_{\rm K}, g_{\rm Ca}\ and\ g_{\rm L}$ are for $K^+, Ca^{2+}$ and leak channels respectively, which are measured in $m\mho/cm^2$. Reversal potentials for these ion channels (i.e., $v_{\rm K},\ v_{\rm Ca},\ v_{\rm L}$) and other voltage constants (i.e., $v_{a,b,c,d}$) are measured in mV. $\phi$, measured in  $s^{-1}$ is a rate constant for the recovery process of $K^+$ ion channels. $v_a$ and $v_c$ are the voltages at which the ion channel activation function $m_{\infty}$ and $n_{\infty}$, respectively, becomes 0.5; and $v_b$ and $v_d$, respectively, are the slope values for those membrane voltage dependent functions. $C$ is the membrane capacitance measured in $\mu F/cm^2$. [@morris81voltage]
+
+\begin{equation} (\#eq:par)
+\begin{split}
+&v_{\rm Ca} = 120\ mV,\  v_{\rm K} = -84\ mV,\ v_{\rm L} = -60\ mV,
+\\ &g_{\rm Ca} = 4.4\ m\mho/cm^2, \ g_{K\rm } = 8\ m\mho/cm^2,\ 
+    g_{\rm L} = 2\ m\mho/cm^2,
+\\ &C = 20\ \mu F/cm^2,\ I_{\rm app} = (variable;\ measured\ in\ 
+    \mu A/cm^2) 
+\end{split}
+\end{equation}
+
+Using the equations \@ref(eq:dvdt)-\@ref(eq:par), by applying $I_{\rm app}=I_{stim} = 95$, I see the membrane voltage and ion channels as shown in the left in Figure \@ref(fig:fig0dt). Red-markers indicate the identified spikes in the membrane voltage traces (see \@ref(spk)). The signal in the second is normalized $Ca^{2+}$ ion channel activation computed using $m_{\infty}$ and the signal in the third row represents the normalized activation of $K^+$ ion channels (i.e., $n, n\in[0,1]$), computed using equation \@ref(eq:dndt). Bursting mode ML neurons show fast and slow dynamics, that is the fast spikes for action potential and the slow oscillation of *plateau potential*, more details on the simulation parameters are given in section \@ref(Bpar).
+
+### Stochastic ML Neuron {#MLst}
+
+Stochastic activation of both, the $K^+$ and $Ca^{2+}$, ion-channels are used for simulation of ML neurons and to compute membrane voltage (Figure \@ref(fig:fig0st)). For the simulation I used the following equations \@ref(eq:stdv)-\@ref(eq:nt), and used constant parameters \@ref(eq:stpar) for the ML neurons, as described in [@anderson15stochastic].
+
+\begin{figure}    \ContinuedFloat
+  \captionsetup[subfigure]{labelformat=empty} \centering
+  \begin{subfigure}[b]{0.75\textwidth}
+    \includegraphics[width=\textwidth]{figs/F0_B_ML_channel_stoch.png}
+    \caption{} \label{fig:fig0st}
+  \end{subfigure}
+  \vspace{-0.75cm}
+  \caption{(B) Stochastic ML Neuron membrane voltage and Stochastic activation of $K^+$ and $Ca^{2+}$ ion channels, (left) in plain/regular ML neurons; (right) ML neurons with bursting mode.}
+\end{figure}
+
+Equation \@ref(eq:stdv) shows the stochastic membrane voltage for the ML model neurons with $n$ and $m$; $(n,m \in [0,1])$ represents the fraction of $K^+$ and $Ca^{2+}$ ion channels open at the given time $t$. Both of which depend on the instantaneous membrane voltage of the ML neuron  Eq. \@ref(eq:stdn)-\@ref(eq:stdm). Stochastic activation of $K^+$ and $Ca^{2+}$ ion channels depends on the *per capita* transition rates $\alpha_n,\beta_n$ and $\alpha_m,\beta_m$, respectively [\@ref(eq:ma), \@ref(eq:mb), \@ref(eq:na), \@ref(eq:nb)]. Same as the deterministic equations, the $I_{\rm app}$ ($\mu A/cm^2$) represents either the current-clamp current (i.e, $I_{stim}$) in case of regular or plain ML neurons (left, in Figure \@ref(fig:fig0st)) or the slow internal feedback current (i.e., $I_{internal}$) for the bursting mode ML neurons (see \@ref(Bpar); right plots, in Figure \@ref(fig:fig0st)). 
+
+
+\begin{align} 
+(\#eq:stdv) \frac{dv}{dt} = F(v,n,m) &= \frac1C ( I_{\rm app} - 
+    g_{\rm Ca} m (v - v_{\rm Ca}) - g_{\rm K} n (v - v_{\rm K}) - 
+    g_{\rm L}(v - v_{\rm L}) )
+\\ \nonumber \frac{dn}{dt}  =  G(v,n, m) &= \alpha_n(v)(1-n) - \beta_n(v)n 
+\\ (\#eq:stdn) &= (n_\infty(v)-n)/\tau_n(v)
+\\ \nonumber \frac{dm}{dt}  =  H(v,n, m) &= \alpha_m(v)(1-m) - \beta_m(v)m 
+\\ (\#eq:stdm) &= (m_\infty(v)-m)/\tau_m(v)
+\end{align}
+
+Cell voltage dependent functions of $\alpha_m, \beta_m, \tau_m$ and $m_\infty$ are modeled using the voltage constants (i.e., $v_a, v_b$ (mV)) and recovery process rate constant $\phi_m\ (s^{-1})$ for stochastic operation of $Ca^{2+}$ ion channels. The activation threshold (i.e., $n=0.5$) and the slope of the voltage dependent activation function,  $n_{\infty}$ is set by $V_a$ and $v_b$, respectively. For convenience, a membrane voltage dependent variable, $\xi_m$, is defined using $v_a, v_b$ [Equations \@ref(eq:mxi)-\@ref(eq:mt)]. 
+
+\begin{align}
+\nonumber \phi_m = 2\ s^{-1},\  v_a &= -1.2\ mV,\ v_b = 18\ mV,
+\\ (\#eq:mxi) \xi_m &= \frac{v-v_a}{v_b},
+\\ (\#eq:ma) \alpha_m(v) &= \frac{\phi_m \cosh(\xi_m/2)}{1+ e^{2\xi_m}},
+\\ (\#eq:mb) \beta_m(v) &= \frac{\phi_m \cosh(\xi_m/2)}{1+ e^{-2\xi_m}},
+\\ \nonumber  m_\infty(v) &= \frac{\alpha_m(v)}{\alpha_m(v) + \beta_m(v)} 
+\\ (\#eq:minf) &= \frac12(1 + \tanh \xi_m) 
+\\ \nonumber \tau_m(v) &= \frac{1}{\alpha_m(v) + \beta_m(v)} 
+\\ (\#eq:mt) &= \frac{1}{\phi \cosh(\xi_m/2)}
+\end{align}
+
+Same as the $Ca^{2+}$ channels, the $K^{+}$ channels are stochastically simulated using voltage dependent functions such as $\alpha_n, \beta_n, \tau_n$ and $n_\infty$. These functions are modeled using the voltage constants (i.e., $v_c, v_d$ (mV)) and rate constant $\phi_n\ (s^{-1})$ and for convenience, a membrane voltage dependent variable, $\xi_n$, is defined using $v_c, v_d$ [Equations \@ref(eq:nxi)-\@ref(eq:nt)]. $v_c$ sets the activation threshold (i.e., $n=0.5$) and $v_d$ sets the slope of the voltage dependent activation function,  $n_{\infty}$.
+
+\begin{align} 
+\nonumber \phi_n = 0.04\ s^{-1},\ v_c &= 2\ mV,\ v_d = 30\ mV,
+\\ (\#eq:nxi) \xi_n &= \frac{v-v_c}{v_d},
+\\ (\#eq:na) \alpha_n(v) &= \frac{\phi_n \cosh(\xi_n/2)}{1+ e^{2\xi_n}},
+\\ (\#eq:nb) \beta_n(v) &= \frac{\phi_n \cosh(\xi_n/2)}{1+ e^{-2\xi_n}},
+\\ \nonumber n_\infty(v) &= \frac{\alpha_n(v)}{\alpha_n(v) + \beta_n(v)} 
+\\ (\#eq:inf) &= \frac12(1 + \tanh \xi_n) 
+\\ \nonumber \tau_n(v) &= \frac{1}{\alpha_n(v) + \beta_n(v)} 
+\\ (\#eq:nt) &= \frac{1}{\phi \cosh(\xi_n/2)}
+\end{align}
+
+The stochastic ML neuron constants \@ref(eq:stpar) such as reversal potentials, conductance and capacitance are set exactly the same as deterministic parameters \@ref(eq:par). [@morris81voltage; @anderson15stochastic]
+
+\begin{equation} (\#eq:stpar)
+\begin{split}
+&v_{\rm Ca} = 120\ mV,\  v_{\rm K} = -84\ mV,\ v_{\rm L} = -60\ mV,
+\\ &g_{\rm Ca} = 4.4\ m\mho/cm^2, \ g_{K\rm } = 8\ m\mho/cm^2,\ 
+    g_{\rm L} = 2\ m\mho/cm^2,
+\\ &C = 20\ \mu F/cm^2,\ I_{\rm app} = (variable;\ measured\ in\ 
+    \mu A/cm^2) 
+\end{split}
+\end{equation}
+
+Figure \@ref(fig:fig0st) is an example simulation of stochastically activating $Ca^{2+}$ and  $K^+$ ion channels (displayed in the second and third rows, respectively) using the equations \@ref(eq:stdv)-\@ref(eq:stpar). For that purpose system size (i.e., $\Omega_{N,M}$) for both ion channels is set to 1000 and for the plain neurons (on the left) are made to spontaneously spike action potentials by applying $I_{\rm app}=I_{stim} = 95$ with red-markers to indicate the identified spikes in the membrane voltage traces (see \@ref(spk)). Stochastic ML neurons in bursting mode are explained in section \@ref(Bpar). The following section, \@ref(CLE) shows the derived model using Langevin equations for simulating these neurons.
+
+### Setting up Chemical Langevin Equation {#CLE}
+
+In the study both the ion channels in ML neurons, $K^+$ and $Ca^{2+}$ channels are operating stochastically for the stochastic simulations. I use Chemical Langevin Equations (CLE) to simulate ion channels stochastically. This method is an approximation method and uses Stochastic Differential Equations (SDE) for stochastic simulation, which is faster than other approximation methods like $\tau$-leaping and the exact methods like Gillespie's exact method [@higham08modeling]. To speed up computation CLE uses diffusion approximation in addition to time approximations used in $\tau$-leaping method, and with faster reaction rates, to get sufficiently large number of reactions happening (for each species), the errors incur would be small by switching to CLE as compared to other exact methods [@wilkinson19stochastic].
+
+As shown in \@ref(eq:rxn), for each ion channels (for each different ions involved in the simulation, i.e., $K^+, Ca^{2+}$ for ML neurons) I can compare it to a first order reaction chemical reaction showing the rates of switching the states between "open" and "close". (Note : Here $N_{open}, N_{close}$ shows the states for $K^+$ ion channels, and similarly one can get another sets of equations for $Ca^{2+}$ ion channels represented by $M_{open},M_{close}$.). Similar method is present for Hodgkin–Huxley model in [@ermentrout10mathematical].
+
+\begin{equation} (\#eq:rxn) 
+\ce{ N_{close} <=>[\alpha][\beta] N_{open} }
+\end{equation}
+
+From \@ref(eq:rxn), two sub-reactions can be formulated along with a stoichiometry matrix for each sub-reaction. \@ref(eq:rxn1) and \@ref(eq:rxn2) shows the chemical hazard function for channel opening and closing reactions.
+
+\begin{equation} (\#eq:rxn1)
+\begin{split}
+Reaction\ (1): \ce{ N_{close} ->[\alpha] N_{open} },
+\\ h_1(N) = \alpha N_{close}\ ;\ \ \ \zeta_1=\binom{-1}{+1}  
+\end{split}
+\end{equation}
+
+\begin{equation} (\#eq:rxn2)
+\begin{split}
+Reaction\ (2): \ce{ N_{open} ->[\beta] N_{close} },
+\\ h_2(N) = \beta N_{open}\ ;\ \ \zeta_2=\binom{+1}{-1}
+\end{split}
+\end{equation}
+
+Since in my model, mass conservation is applicable as no immigration/birth/death are not happening, for simplifying the computation, I can convert 2D sets of equations to 1D equations. Total count for $K^+$ ion channels in the simulation is denoted by $\Omega_N$ (similarly $\Omega_M$ for $Ca^{2+}$ channels). $N(t)$ represents the count of channels in $N_{open}$ state at a given time, $t$, so the count of channels in $N_{close}$ state would be $\Omega_N - N(t)$ at that time. I then updated the reaction hazard function for 1D system \@ref((eq:1d). 
+
+\begin{equation} (\#eq:1d)
+\begin{split}
+\Omega_N = N_{open} + &N_{close}\ ;\ \ N(t) = N_{open}(t)
+\\ \therefore\ N_{close}(t) &= \Omega_N - N_{open}(t) 
+\\ h_{1(N)} & = \alpha (\Omega_N - N)
+\\ h_{2(N)} &= \beta N 
+\end{split}
+\end{equation}
+
+Chemical Langevin Equations can be set up as described [@higham08modeling; @wilkinson19stochastic] for ion channel simulation. For each time step of $\tau$, the state of each ion channels counts can be updated using the following equation :
+
+\begin{equation}
+\begin{split}
+N(t+\tau) = N(t) &+ \tau (h_{1(N)}-h_{2(N)}) 
+\\ &+ \sqrt{\tau\  h_{1(N)}}\ \xi_1(t) 
+\\ &- \sqrt{\tau\  h_{2(N)}}\ \xi_2(t)\ ;\ \ \xi_{1,2}(t) \sim \mathcal{N}(0,1)
+\\ \implies N(t+\tau) = N(t) &+ \tau (h_{1(N)}-h_{2(N)}) 
+\\ &+ \sqrt{\tau} \sqrt{h_{1(N)}+h_{2(N)}}\ \xi(t)\ ;\ \ \xi(t) \sim \mathcal{N}(0,1)
+\end{split}
+\end{equation}
+
+I use \@ref(eq:dv)-\@ref(eq:M) for simulating simple ML neurons (Figure \@ref(fig:fig0st)) to update each ion channel stochastically using CLE.
+
+\begin{align}
+(\#eq:dv) \frac{dV}{dt} =  F(V(t),N(t),M(t)) &= \frac1C ( I_{\rm app} - g_{\rm Ca} 
+    \frac{M(t)}{\Omega_M} \left(V(t) - v_{\rm Ca}\right) - g_{\rm K} 
+    \frac{N(t)}{\Omega_N} \left(V(t) - v_{\rm K}\right) - g_{\rm L}(V - v_{\rm L}) )
+\\ \nonumber N(t+\tau) = N(t) &+ \tau (\alpha (\Omega_N - N(t)) - \beta N(t)) 
+\\ (\#eq:N) &+ \sqrt{\tau} \sqrt{\alpha (\Omega_N - N(t)) + \beta N(t)}\ \xi_N(t)
+\\ \nonumber M(t+\tau) = M(t) &+ \tau (\alpha (\Omega_M - M(t)) - \beta M(t)) 
+\\ (\#eq:M) &+ \sqrt{\tau} \sqrt{\alpha (\Omega_M - M(t)) + \beta M(t)}\ \xi_M(t)\ ;
+    \ \ \ \xi_{N,M}(t) \sim \mathcal{N}(0,1)
+\end{align} 
+
+Values of other parameters and constants are as described earlier in \@ref(MLst). Also, see \@ref(syn) for the equations with adding chemical synapse used for simulation of HCOs.
+
+### Bursting mode in ML Neurons {#Bpar}
+
+ML Neurons explained in previous sections were plain/regular neurons (i.e., non-bursting), where input current is the current clamp current (i.e., $I_{\rm app} = I_{stim}$). But, I also used ML neurons in bursting mode (right side in Figure \@ref(fig:fig0dt) & \@ref(fig:fig0st)). In bursting mode, the Current clamp current is set to zero (i.e., $I_{stim}=0$) and a slow feedback current internal current, computed as \@ref(eq:Bi), is responsible for *plateau potential* and reaching the action potential firing threshold is responsible for fast dynamics of spikes [@izhikevich06bursting]. For bursting mode, I used the following parameters, which I found suitable to elicit fast and slow dynamics present in this mode.
+
+\begin{align} 
+\nonumber I_{\rm app} &= I_{internal}
+\\ \nonumber \varepsilon = 0.01&;\ v_o = -26;
+\\ (\#eq:Bi) \frac{dI_{internal}}{dt} = &\varepsilon*(v_o - V(t))
+\end{align} 
+
+For simulating ion channels most of the ML neuron parameters and constants are used as described in the previous section (For deterministic simulation \@ref(eq:par); stochastic simulation \@ref(eq:stpar)). The changes in the parameters are shown as below.
+
+For achieving bursting mode in deterministic simulation (right side, Figure \@ref(fig:fig0dt)), the changes made are shown in \@ref(eq:Bpar).
+
+\begin{equation} (\#eq:Bpar)
+\begin{split}
+\phi=0.23,\ v_c = 12,\ v_d = 17.4
+\end{split}
+\end{equation}
+
+Similarly, for bursting mode in stochastic simulation (right side, Figure \@ref(fig:fig0st)), the changes in parameters are shown in \@ref(eq:Bparst).
+
+\begin{equation} (\#eq:Bparst)
+\begin{split}
+\phi_m=2,\ \phi_n=0.23,\ v_c = 12,\ v_d = 17.4
+\end{split}
+\end{equation}
+
+Detailed description on designing different types of neurons is given in [@rinzel98chapter7].
+
+## Effect of Current and Noise
+
+Stimulus current would change the output of regular ML neurons and change in system size would affect the noise level in both the types of ML neurons, regular and bursting mode.
+
+### Varying current and system sizeIn plain  ML neurons
+
+\begin{figure}
+  \captionsetup[subfigure]{labelformat=empty} \centering
+  \begin{subfigure}[b]{\textwidth}
+    \includegraphics[width=\textwidth]{figs/F1_A_ML_Omega_Current.png}
+    \caption{} \label{fig:fig1nb}
+  \end{subfigure}
+  \vspace{-1cm}
+  \caption{(A) Plain (non-bursting) ML neurons for different system size and stim. current.}
+\end{figure}
+
+Figure \@ref(fig:fig1nb) shows regular ML neurons changing behavior with varied current (along the column) and the noise (along the row). Threshold amount of stimulus current for deterministic neurons to start firing is about 89 $\mu A/cm^2$. For stochastic neurons, increasing noise (i.e., reducing $\Omega$) allows more spontaneous spikes for sub-threshold stimulus currents.  
+
+### In Bursting mode
+
+\begin{figure}    \ContinuedFloat
+  \captionsetup[subfigure]{labelformat=empty} \centering
+  \begin{subfigure}[b]{0.6\textwidth}
+    \includegraphics[width=\textwidth]{figs/F1_B_ML_Omega_Bursting.png}
+    \caption{} \label{fig:fig1b}
+  \end{subfigure}
+  \vspace{-0.75cm}
+  \caption{(B) ML neurons in bursting mode with different system size. No external stimulus current is provided here.}
+\end{figure}
+
+Figure \@ref(fig:fig1b) shows Bursting mode ML neurons under various noise levels. Changing noise levels affects the rhythm and bursting dynamics of ML neurons. Increasing noise increases bursting frequency in such neurons.
+
+To summarize, higher system size in stochastic simulation causes lower noise, and the resulting patterns look more comparable to deterministic simulations. Also, for regular neurons, increasing current causes frequent firing of spikes. Effects of noise are drastic in lower current simulations. 
+
+## Adding Synapse {#syn}
+
+To be able to create a network out of ML neurons, I altered the ML model neurons, once again, to have a chemical synapse of both the inhibitory and excitatory types. Each neuron in the array of network, can be configured separately to receive either no-synapse, inhibitory or excitatory synapses from a desired neuron from the network (Appendix \@ref(MLnet)).
+
+### Activation function
+
+\begin{figure}
+  \captionsetup[subfigure]{labelformat=empty} \centering
+  \begin{subfigure}[b]{0.5\textwidth}
+      \includegraphics[width=\textwidth]{figs/F2_A_ML_Synapse_ActFxn.png}
+      \caption{} \label{fig:fig2act}
+  \end{subfigure}
+  \vspace{-0.75cm}
+  \caption{(A) Synaptic Activation Function}
+\end{figure}
+
+Figure \@ref(fig:fig2act) shows the activation function with a synaptic threshold of +5 mV and the function slope of 0.5. I used \@ref(eq:actsyn) to define the sigmoidal activation function, which is inspired from [@yu00dynamical].
+
+>By changing Omega, your system size.  Currently it looks like you have Omega=100 for the potassium channels, by default (line 89 of your code).
+If you make Omega equal to 1e4 then the noise should be reduced by 90%, so to speak.  I tried this in your code, and the cells stopped firing.
+This means that with current=60, a cell is in the "excitable" regime, where it will only fire if forced (by noise or by the other cell).  
+I tried setting the current to 100 and then the cells both fired even when omega was 1e4.
+
+\begin{equation} (\#eq:actsyn)
+\begin{split}
+syn_{Threshold} = 5,\ &syn_{Slope} = 0.5, 
+\\ S_{syn}(v) = \frac12(1+\tanh ((v-&syn_{Threshold})/syn_{Slope}));
+\end{split}
+\end{equation}
+
+### Synaptic current 
+
+Synaptic current (measured in $\mu A/cm^2$) is computed using the following formula for Inhibitory and excitatory synapses in \@ref(eq:isyn).
+
+\begin{equation} (\#eq:isyn)
+\begin{split}
+v_{\rm syn}(exci.) = 100\ mV,\ &v_{\rm syn}(inhi.) = -100\ mV,\ g_{\rm syn} = 1\ m\mho/cm^2
+\\ I_{\rm syn}(v) = &-g_{\rm syn}S_{syn}(v)(v-v_{\rm syn})\ \ \mu A/cm^2
+\end{split}
+\end{equation}
+
+Synaptic current is added in in $I_{\rm app}$ along with other possible currents such as current clamp current, $I_{stim}$, or the internal feedback current $I_{internal}$. Thus, for regular ML neurons with synapse will become as following,
+
+\begin{equation} (\#eq:addsyn)
+\begin{split}
+(For\ plain\ ML\ neuron\ with\ Synapse)\ \ I_{\rm app} &= I_{stim} + I_{\rm syn}(v)
+\\ (For\ bursting\ ML\ neuron\ with\ Synapse)\ \ I_{\rm app} &= I_{internal} + I_{\rm syn}(v)
+\end{split}
+\end{equation}
+
+#### Synapses in deterministic simulation
+
+\begin{figure}  \ContinuedFloat
+  \captionsetup[subfigure]{labelformat=empty} \centering
+  \begin{subfigure}[b]{\textwidth}
+      \caption{} \label{fig:fig2dt}
+      \includegraphics[width=\textwidth]{figs/F2_B_ML_Synapse_Deter.png}
+  \end{subfigure}
+  \vspace{-0.5cm}
+  \caption{(B) Synaptic operations in deterministic ML neurons}
+\end{figure}
+
+Figure \@ref(fig:fig2dt) shows the effect of a synapse in deterministic ML neurons in regular and bursting mode with the synapse is formed on Neuron-2. Regular type Neuron-1 are having current clamp, $I_{stim}=95$ to elicit spontaneous spikes in Neuron-1. Neuron-2 is left unconnected for both the cases to see the effect of presynaptic activity. 
+
+#### Synapses in stochastic simulation
+
+\begin{figure}    \ContinuedFloat
+  \captionsetup[subfigure]{labelformat=empty} \centering
+  \begin{subfigure}[b]{\textwidth}
+      \caption{} \label{fig:fig2st}
+      \includegraphics[width=\textwidth]{figs/F2_C_ML_Synapse_Stoch.png}
+  \end{subfigure}
+  \vspace{-0.5cm}
+  \caption{(C) Synaptic operations in deterministic and stochastic ML neurons}
+\end{figure}
+
+Figure \@ref(fig:fig2st) shows synapse in stochastic ML neurons with $\Omega_{M,N}=500$ for all neurons. Neuron-1 (regular type) are firing action potentials due to the current clamp stimulus current $I_{stim}=80$ and the bursting neurons (at the bottom of the image), show the firing due to internal feedback current. Each of the "driving" neuron is labeled as Neuron-1, which is projecting a synapse onto Neuron-2 via either excitatory (left-column) or inhibitory (right-column) chemical synapse. Figure \@ref(fig:fig2st) displays stochastic neurons.
+
+## Half Center Oscillator {#hco}
+
+Half center oscillator is formed through a reciprocal connection of two ML neurons and each of them are supplied with super-threshold stimulus current in case of plain ML neuron types. So combining the type of synapse type of ML neuron, I get the following types of HCOs :
+
+1. Excitatory HCO with ML neurons, i.e, e-HCO(1)
+2. Inhibitory HCO with ML neurons, i.e, i-HCO(1)
+3. Excitatory HCO with bursting ML neurons, i.e, e-HCO(2)
+4. Inhibitory HCO with bursting ML neurons, i.e, i-HCO(2)
+
+Each of these HCO types can either be simulated using deterministic or stochastic methods. In case of stochastic simulation, one can vary the noise levels to see the effect on it's synchronization.
+
+### Plain ML neurons HCO
+
+\begin{figure}
+  \captionsetup[subfigure]{labelformat=empty} \centering
+  \begin{subfigure}[b]{\textwidth}
+      \caption{} \label{fig:fig3nb}
+      \includegraphics[width=\textwidth]{figs/F3_A_HCO_Omega_NB.png}
+  \end{subfigure}
+  \vspace{-0.5cm}
+  \caption{(A) HCO with non-bursting ML neurons}
+\end{figure}
+
+Figure \@ref(fig:fig3nb) shows HCO with plain ML neurons with inhibitory and excitatory synapses. Stimulus current is enabled for each of these neurons, $I_{stim}=95$. Effect of noise level is seen through varying system size, ($\Omega_{M,N}$).
+
+### Bursting mode ML neurons HCO
+
+\begin{figure}    \ContinuedFloat
+  \captionsetup[subfigure]{labelformat=empty} \centering
+  \begin{subfigure}[b]{\textwidth}
+      \caption{} \label{fig:fig3b}
+      \includegraphics[width=\textwidth]{figs/F3_B_HCO_Omega_B.png}
+  \end{subfigure}
+  \vspace{-0.5cm}
+  \caption{(B) HCO with bursting ML neurons}
+\end{figure}
+
+Similarly, HCO with bursting ML neurons is shown in Figure \@ref(fig:fig3b) where stimulus current is set to zero and each neuron is having internal feedback current.
+
+It appears that both excitatory and inhibitory HCOs show synchronization where the e-HCO show in-phase oscillations and i-HCO show out-phase oscillations. In general, lower noise level shows tight coupling between the oscillators in either case. (See section \@ref(CD) for discussion).
+
+## Measuring Synchrony {#MLsync}
+
+Once I get the voltage traces of both the neurons, I measure the amount of synchronization for each HCO type, and later to compare the synchronization among all types. For measuring synchrony I use two methods. 
+
+1. Cross-correlation of two raw voltage traces.
+2. Gaussian smoothed spike-time based binless correlation.
+
+The first method does not make any assumptions and it compares raw voltage traces to each other to each other. Pearson's linear correlation coefficient is fond for the normalized voltage traces of neuron-1 and neuron-2 for a given HCO. However, this method can be influenced by the noise levels in the system, which can be an issue for lower system size simulations. So, in addition to this method, I am also using gaussian smoothed spike-train for finding correlation, which incurs less error than simple *peristimulus time histogram* (PSTH) as this method uses gaussian kernel and eliminates the noise generated from binning of the spike times, as previously described in detail [@kruskal07binless; @victor97metricspace]. 
+
+### Detect spikes {#spk}
+
+\begin{figure}
+  \centering
+  \begin{subfigure}[b]{\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figs/F4_sample_ML.png}
+  \end{subfigure}
+  \vspace{-0.5cm}
+  \caption{Detecting spikes in ML neurons using amplitude threshold of 15mV.}  \label{fig:fig4}
+\end{figure}
+
+I am finding and saving spike-times along with raw voltage traces for each simulation because one of the methods to quantify synchronization requires them. Figure \@ref(fig:fig4) shows threshold based spikes detection result for a sample ML neuron with the voltage threshold set to 15 mV. I find local maxima to identify peaks in a signal. I use a refractory period of 15ms to avoid detecting multiple spikes for a single action potential, which would have been an issue when an unfiltered neuron has multiple local-maxima. Two sample neurons here are not connected to each other via any synapse. 
+
+### Gaussian smoothing {#blc}
+
+\begin{figure}
+  \centering
+  \begin{subfigure}[b]{\textwidth}
+      \includegraphics[width=\textwidth]{figs/F5_GCFR_GW.png}
+  \end{subfigure}
+  \vspace{-0.5cm}
+  \caption{Gaussian smoothing of spike trains with Gaussian kernel of different $\sigma$.} \label{fig:fig5gcfr}
+\end{figure}
+
+Previously Figure \@ref(fig:fig4) shows identified spike-times (filled markers) and raw membrane voltage traces for two ML neurons. Here, in the Figure \@ref(fig:fig5gcfr) the gaussian-smoothed spike-train with a gaussian-kernel of different $\sigma$ (S.D.) are shown for the same neurons 1 and 2. Gaussian window size calculated from the Bin-Width ($W$) using $\sigma=W/\sqrt12$ [@kruskal07binless]. Kernels are shown in the figure on the right pane.
+
+### Single Run : Effect of bin-width on cross-correlation
+
+As previously shown, varying $\sigma$ would change the gaussian-smoothed spike trains, and subsequently it will change the correlation. Here I am comparing correlation coefficient found for various bin-width (thus,  varied $\sigma$) and comparing it across a wider range of noise levels (i.e., $\Omega_{M,N}=\{5e4, 5e3, 5e2, 5e1, 5e0\}$) for each HCO types. 
+\begin{figure}
+  \centering
+  \begin{subfigure}[b]{0.75\textwidth}
+      \includegraphics[width=\textwidth]{figs/F6_HCO_corr_single_run.png}
+  \end{subfigure}
+  \vspace{-0.25cm}
+  \caption{Single iteration values of spike train correlation for various kinds of HCOs and for different system sizes.} \label{fig:fig6}
+\end{figure}
+
+Figure \@ref(fig:fig6) shows correlation of raw traces (i.e., without identifying spike-times) in upper left corner; and also shows the effect of S.D. of the gaussian window (i.e., $\sigma=W/\sqrt12$) used for getting the binless correlation between the spike trains. The raw membrane voltage traces for each of the neurons in all the HCOs are shown in Appendix, Figure-\@ref(fig:figx1). It is apparent that raw traces and smaller bin-width (W=50) yields more similar correlation than the higher bin-widths (W=250,500) and increasing the noise levels generally reduces the coupling of the oscillators. Wider bin-width shows higher value of correlation as compared to smaller widths. (See section \@ref(CD) for discussion).
+
+
+# Results
+
+While finding such correlation I noticed that some values were fluctuating a lot across the trials, thus, I was getting slightly varying plots of Figure \@ref(fig:fig6). So, for comparing the effect of noise (i.e., system size) on various kinds of HCOs, I plotted the correlations of multiple iterations (n=25) on a semi-log scale plot. The result is shown in Figure \@ref(fig:fig7).
+
+\begin{figure}
+  \centering
+  \begin{subfigure}[b]{\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figs/F7_HCO_BLCorr_omega.png}
+  \end{subfigure}
+  \vspace{-0.5cm}
+  \caption{Comparing binless correlations in different types of HCOs for multiple runs (n=25).}  \label{fig:fig7}
+\end{figure}
+
+(Note : Correlation values in the scatterplot in Figure \@ref(fig:fig7) contain a small jitter in X-axis direction, to better visualize the points and variabilities without affecting their Y-axis values.)
+
+Figure \@ref(fig:fig7) quantifies the synchronization between two neuron cells simulated using deterministic and stochastic methods while varying noise levels. The correlation values are compared across different methods of finding correlation (i.e., raw traces without gaussian smoothing and with gaussian smoothing using various kernel sizes). Smaller kernel (W=50) gives less variable results across multiple iterations.  Positive values show in-phase synchronization and negative values here suggest out-of phase synchronization. The absolute value suggests the strength of the coupling between neurons in the HCO. Following the raw traces and binless correlation (W=50), it is apparent that reducing noise levels (i.e, higher $log_{10}(\Omega$) values) give stronger correlation of the oscillators and deterministic simulation gives similar results with small noise levels, as one would expect. More discussion on variabilities due to bin-width and counter-intuitive trends seen in bursting type inhibitory-HCO (in purple) is done in the following section (See Section \@ref(CD)).
+
+
+# Discussion and Conclusions {#CD}
+
+1. **Higher binwidth in binless correlation leads to more variabilities and inflated correlation values.**
+  
+  Figure \@ref(fig:fig7) shows correlation comparison for different HCOs computed using various methods in 25 iterations. Firstly, variations of the values across 25 iterations are more when the gaussian kernel used is wider (e.g., W=250, 500, etc.) and also with this method, more values show positive correlation as compared to negative correlation. This may be the case because wider kernels would overlap more for neighboring spikes and show an overall positive (i.e., in phase) correlation as opposed to anti-phased correlation. Higher variabilities indicate that gaussian smoothing using a larger gaussian kernel would make correlation coefficient more sensitive for the relative spike position. For example, if there are more than one spike present close-by, this method would give very high signal for them (see in Figure \@ref(fig:fig5gcfr)), and ultimately this becomes an issue as the gaussian smoothed signal would vary quite a lot based on randomness in spike position.
+  
+2. **Binless correlation (with small width kernel) is more efficient in predicting correlation for non-bursting HCOs and excitatory-HCOs.**
+  
+  While comparing raw traces and 50ms window results, one can see that gaussian smoothing works better for non-bursting type HCOs (in blue, yellow). That is because raw correlation depends on the actual shape of the spikes (see Figure \@ref(fig:fig3nb)) and binless correlation only uses identified spike-times. So, with higher noise in simulation (i.e., low omega), a spike in one neuron may fail to cause a spike in another neuron, yet the shape of the raw trace would change which may lead the raw-signal method to count higher higher correlation than spike-time based method. Also due to noise levels, if the peaks are not aligned but the overall spike shapes are matching, the same thing may happen. Thus, here binless correlation with identified spike-times is more useful for predicting correlation given certain noise levels.
+  
+3. **For bursting type inhibitory-HCO binless correlation with "wider-width" kernels works the best. Binless correlation with small-width kernel is in-efficient and raw-traces method completely disregard spike-times in favor of slow *plateau potential*.**
+
+See bursting inhibitory-HCO (in Purple) in Figure \@ref(fig:fig7), for which the trend looks very different between raw-traces and 50ms kernel methods. This is mainly because the raw-traces method would largely influenced by the *plateau potential* due to slow internal bursting current, whereas in the binless correlation method the only identified spike-times would be used due to the pattern our bursting-ML neurons use, the fast current feedback (i.e., a spike) would vary a lot based on the coupling type and noise level. Thus, the binless method shows it more like un-synchronized (i.e., values close to zero) for inhibitory HCOs and raw-traces method show it as anti-phased synchronized, the result largely driven by the slow *plateau potentials*. 
+
+However, a wider-width kernel would disregard the exact spike-times but still works better for inhibitory-bursting-HCOs (see W=250, Figure \@ref(fig:fig7)). This is because the *plateau potentials* itself oscillates (i.e., turns on-and-off) and the spikes are segregated in chunks (see \@ref(fig:fig3b)), so the gaussian smoothed traces with wider kernels would also oscillate in anti-phase. So, one can see why the wider-kernel is more efficient in predicting correlation for bursting type inhibitory-HCOs. 
+
+
+4. **Simple oscillator made using two ML neurons shows synchronized oscillations.**
+  
+  At the very least, the simple altered ML neurons show synchronous firing when coupled through any type of synapse, creating a simple oscillator. Excitatory-HCOs show stronger correlations as compared to inhibitory-HCOs. For a sustained firing, and in-turn, achieve synchrony, ML neurons either need slow internal feedback current or constant external stimulus current. 
+  
+5. **Excitatory-HCOs show in-phase synchronization and inhibitory-HCOs show ant-phase synchronization. Reducing Noise improves the degree of synchrony.**
+  
+  As explained earlier in discussion points 2 and 3, synchronization for non-bursting-HCOs and excitatory-bursting-HCOs should be compared using binless correlation method with 50ms kernel (upper right, Figure \@ref(fig:fig7))) and for bursting type inhibitory-HCO, I would use 250ms kernel (lower left, Figure \@ref(fig:fig7))). Comparing the correlation coefficients, qualitatively, across various HCOs it appears that excitatory-HCOs (bursting and non bursting alike) show in-phase correlation, with bursting type HCO being higher tolerant to system noise levels. Similarly, inhibitory-HCOs show anti-phase synchronization. 
+
+\clearpage 
+
+# (APPENDIX) Appendix {-}
+
+# Appendix A : Single-Run Raw Plots ($\Omega$ and HCO types)
+
+These plots are the raw voltage traces for each neurons in all HCOs, which are used to compute single run correlations in Figure \@ref(fig:fig6).
+
+\begin{figure}
+  \centering
+  \begin{subfigure}[b]{\textwidth}
+    \includegraphics[width=.49\textwidth]{figs/old/Fx1_A_det_NB.png}
+    \includegraphics[width=.49\textwidth]{figs/old/Fx1_A_HCO_det_B.png}
+    \vspace{-0.5cm} \caption{Deterministic HCO}
+  \end{subfigure}
+\end{figure}
+
+\begin{figure} \ContinuedFloat
+  \centering
+  \begin{subfigure}[b]{\textwidth}  
+    \includegraphics[width=.49\textwidth]{figs/old/Fx1_B_HCO_Om5e4_NB.png}
+    \includegraphics[width=.49\textwidth]{figs/old/Fx1_B_HCO_Om5e4_B.png}
+    \vspace{-0.5cm} \caption{Stochastic HCO with Omega=50,000.}
+  \end{subfigure}
+\end{figure}
+
+\begin{figure} \ContinuedFloat
+  \centering
+  \begin{subfigure}[b]{\textwidth}  
+    \includegraphics[width=.49\textwidth]{figs/old/Fx1_C_HCO_Om5e3_NB.png}
+    \includegraphics[width=.49\textwidth]{figs/old/Fx1_C_HCO_Om5e3_B.png}
+    \vspace{-0.5cm} \caption{Stochastic HCO with Omega=5000.}
+  \end{subfigure}
+ \end{figure}
+
+\begin{figure} \ContinuedFloat
+  \centering
+  \begin{subfigure}[b]{\textwidth}
+    \includegraphics[width=.49\textwidth]{figs/old/Fx1_D_HCO_Om5e2_NB.png}         
+    \includegraphics[width=.49\textwidth]{figs/old/Fx1_D_HCO_Om5e2_B.png}
+    \vspace{-0.5cm} \caption{Stochastic HCO with Omega=500.}
+  \end{subfigure}
+\end{figure}
+
+\begin{figure} \ContinuedFloat
+  \centering
+  \begin{subfigure}[b]{\textwidth}  
+    \includegraphics[width=.49\textwidth]{figs/old/Fx1_E_HCO_Om5e1_NB.png}
+    \includegraphics[width=.49\textwidth]{figs/old/Fx1_E_HCO_Om5e1_B.png}
+    \vspace{-0.5cm} \caption{Stochastic HCO with Omega=50.}
+  \end{subfigure}
+\end{figure}
+
+\begin{figure} \ContinuedFloat
+  \centering
+  \begin{subfigure}[b]{\textwidth}  
+    \includegraphics[width=.49\textwidth]{figs/old/Fx1_F_HCO_Om5e0_NB.png}
+    \includegraphics[width=.49\textwidth]{figs/old/Fx1_F_HCO_Om5e0_B.png}
+    \vspace{-0.5cm} \caption{Stochastic HCO with Omega=5.}
+  \end{subfigure}
+  \vspace{-0.5cm} \caption{Single-Run Raw Plots }  \label{fig:figx1}
+\end{figure}
+
+\clearpage 
+
+# Appendix B : Codes
+
+## Matlab code for simulation
+
+\definecolor{mygreen}{RGB}{28,172,0}
+\definecolor{mylilas}{RGB}{170,55,241}
+\lstset{language=Matlab,%
+    %basicstyle=\color{red},
+    breaklines=true,%
+    morekeywords={matlab2tikz},
+    keywordstyle=\color{blue},%
+    morekeywords=[2]{1}, keywordstyle=[2]{\color{black}},
+    identifierstyle=\color{black},%
+    stringstyle=\color{mylilas},
+    commentstyle=\color{mygreen},%
+    showstringspaces=false,%without this there will be a symbol in the places where there is a space
+    numbers=left,%
+    numberstyle={\tiny \color{black}},% size of the numbers
+    numbersep=9pt, % this defines how far the numbers are from the text
+    emph=[1]{for,end,break},emphstyle=[1]\color{red}, %some words to emphasise
+    %emph=[2]{word1,word2}, emphstyle=[2]{style},    
+}
+
+### ML_neurons : Parallel simulation of an array of neurons connected in a network {#MLm}
+
+\lstinputlisting{matlab_scripts/ML_neurons.m}
+
+### ML_network : Initializing and simulating a network of ML neurons {#MLnet}
+
+(Note : "Demo=1" option in this function gives a demo of all HCO types.)
+
+\lstinputlisting{matlab_scripts/ML_network.m}
+
+### BinlessCorrelation : Plotting gaussian smoothed spike-trains and computing cross-correlation between two traces.
+
+\lstinputlisting{matlab_scripts/GetBinlessCorr.m}
+
+## Other things : LaTeX, Figures, Codes
+
+- All Matlab simulation script, Matlab scripts for all figures, tex/md files for generating this report and figures files are available here : 
+  + <[Google Drive](https://drive.google.com/drive/folders/1N4nMSW9fY1oOydNJQu4aa85tXOV_euu4?usp=sharing)>
+  + <TODO: Add Github>
+
+
+# References
+
