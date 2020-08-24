@@ -2,3 +2,5 @@
 *.pdf
 *.tex
 *.bib
+*.Rhistory
+*.Rproj

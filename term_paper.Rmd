@@ -207,7 +207,7 @@ Reaction\ (2): \ce{ N_{open} ->[\beta] N_{close} },
 \end{split}
 \end{equation}
 
-Since in my model, mass conservation is applicable as no immigration/birth/death are not happening, for simplifying the computation, I can convert 2D sets of equations to 1D equations. Total count for $K^+$ ion channels in the simulation is denoted by $\Omega_N$ (similarly $\Omega_M$ for $Ca^{2+}$ channels). $N(t)$ represents the count of channels in $N_{open}$ state at a given time, $t$, so the count of channels in $N_{close}$ state would be $\Omega_N - N(t)$ at that time. I then updated the reaction hazard function for 1D system \@ref((eq:1d). 
+Since in my model, mass conservation is applicable as no immigration/birth/death are not happening, for simplifying the computation, I can convert 2D sets of equations to 1D equations. Total count for $K^+$ ion channels in the simulation is denoted by $\Omega_N$ (similarly $\Omega_M$ for $Ca^{2+}$ channels). $N(t)$ represents the count of channels in $N_{open}$ state at a given time, $t$, so the count of channels in $N_{close}$ state would be $\Omega_N - N(t)$ at that time. I then updated the reaction hazard function for 1D system \@ref(eq:1d). 
 
 \begin{equation} (\#eq:1d)
 \begin{split}
