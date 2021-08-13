@@ -1,6 +1,3 @@
 /figs/*
-*.pdf
 *.tex
-*.bib
 *.Rhistory
-*.Rproj

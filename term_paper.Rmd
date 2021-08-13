@@ -207,7 +207,7 @@ Reaction\ (2): \ce{ N_{open} ->[\beta] N_{close} },
 \end{split}
 \end{equation}
 
-Since in my model, mass conservation is applicable as no immigration/birth/death are not happening, for simplifying the computation, I can convert 2D sets of equations to 1D equations. Total count for $K^+$ ion channels in the simulation is denoted by $\Omega_N$ (similarly $\Omega_M$ for $Ca^{2+}$ channels). $N(t)$ represents the count of channels in $N_{open}$ state at a given time, $t$, so the count of channels in $N_{close}$ state would be $\Omega_N - N(t)$ at that time. I then updated the reaction hazard function for 1D system \@ref(eq:1d). 
+Since in my model, mass conservation is applicable as no immigration/birth/death are not happening, for simplifying the computation, I can convert 2D sets of equations to 1D equations. Total count for $K^+$ ion channels in the simulation is denoted by $\Omega_N$ (similarly $\Omega_M$ for $Ca^{2+}$ channels). $N(t)$ represents the count of channels in $N_{open}$ state at a given time, $t$, so the count of channels in $N_{close}$ state would be $\Omega_N - N(t)$ at that time. I then updated the reaction hazard function for 1D system \@ref((eq:1d). 
 
 \begin{equation} (\#eq:1d)
 \begin{split}
@@ -327,10 +327,6 @@ To be able to create a network out of ML neurons, I altered the ML model neurons
 
 Figure \@ref(fig:fig2act) shows the activation function with a synaptic threshold of +5 mV and the function slope of 0.5. I used \@ref(eq:actsyn) to define the sigmoidal activation function, which is inspired from [@yu00dynamical].
 
->By changing Omega, your system size.  Currently it looks like you have Omega=100 for the potassium channels, by default (line 89 of your code).
-If you make Omega equal to 1e4 then the noise should be reduced by 90%, so to speak.  I tried this in your code, and the cells stopped firing.
-This means that with current=60, a cell is in the "excitable" regime, where it will only fire if forced (by noise or by the other cell).  
-I tried setting the current to 100 and then the cells both fired even when omega was 1e4.
 
 \begin{equation} (\#eq:actsyn)
 \begin{split}
