@@ -3,7 +3,7 @@ title: "Measuring Synchronization in Simple Neural Oscillators"
 author: |
   | Shivansh Dave 
   | Biology Dept., Case Western Reserve University
-  | sdd53@case.edu
+  | shivansh@case.edu
 date: |
   | August 10, 2020
   | 
@@ -624,9 +624,7 @@ These plots are the raw voltage traces for each neurons in all HCOs, which are u
 ## Other things : LaTeX, Figures, Codes
 
 - All Matlab simulation script, Matlab scripts for all figures, tex/md files for generating this report and figures files are available here : 
-  + <[Google Drive](https://drive.google.com/drive/folders/1N4nMSW9fY1oOydNJQu4aa85tXOV_euu4?usp=sharing)>
-  + <TODO: Add Github>
-
+  + <[GitHub-shivanshdave](https://github.com/shivanshdave/ML_HCO_sync)>
 
 # References
 
