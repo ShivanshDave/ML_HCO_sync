@@ -1,6 +1,4 @@
-/figs/*
 *.tex
-/.Rproj*
 *.Rhistory
 .RData
 .Rproj.user
