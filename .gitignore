@@ -1,3 +1,5 @@
 /figs/*
 *.tex
+/.Rproj*
 *.Rhistory
+.RData
